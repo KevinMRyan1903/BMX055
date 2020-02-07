@@ -1,0 +1,28 @@
+/* I’m a mechanical engineer so I struggled with this a bit.  The Mag data from the BNX055 chip is a “bit” complicated for me (pun intended).
+Referring to the Magnetic field data in the BMX055 datasheet helps after looping through it for many times and after days of processing..  Here is my take:
+For Mag X or Y axis, the data comes from 2 registers of 8bits each.  So for proper binary addition of two 8bit numbers to get a 16bit number, the second register must be multiplied by 255, then they can be added together.  So the max decimal value from that binary addition would be =65535.  So far so good..
+However this is where it gets more complicated because the first 3 bits of the first register is not actually part of the mag measurement.  For whatever reason, the first three bits are ~always 001 (in binary).  So the 16bit number must be adjusted down to 13bits, which is accomplished by subtracting the 16bit value by 57338 (57338 is the difference between 16bit and 13bit numbers).  This 13bit would yield a max decimal number of 8191 which is actual magnet measurement, kindof (there's more to it).. 
+The 8191 is only the positive side of the valve because the final 16th bit (8th bit of the second register) 1 or 0 signifies + or - for the decimal value.  Hence we need to convert +8191 to +/-4095.5 by adding an IF statement: example IF (xMag>4095) {xMag=4095-mx;}.
+
+As for Y, data, it is the same as X. Just switch xMag with yMag.
+
+As for the Mag Z axis, it’s similar, but with a twist.  
+The MagZ data comes from 2 registers of 8bits each (same as X&Y).  So binary addition is the same, it gets us to a max decimal value of =65535.  However with the z axis, only the first 1 bit of the first register is not part of the mag measurement.  So to account for this, we must adjust z by subtracting 32768 (due to the difference between 16bit and 15bit numbers), this would yield a max number of 32768.  And then like X&Y,  the final (16th) bit is signifies + or - value, hence we add an IF statement to convert from 32768 to +/-16384, example IF (mz>16383) {mz=16384-mz;}.
+
+But that’s not all. There are settings to increase the mag chip measurement accuracy (with a slight power consumption increase), but I havn’t figured that out yet..
+Also haven’t figured out the temp compensation yet.  
+Below is my revised Arduino code based on my understanding above.    
+*/
+
+  int xMag = ((data[1] * 256) + (data[0]))-57344;
+  if (xMag > 4095)  {xMag = 4095-xMag; }
+
+  int yMag = ((data[1] * 256) + (data[0]))-57344;
+  if (yMag > 4095)  {yMag = 4095-my; }
+
+  int zMag = ((data[1] * 256) + (data[0]))-32768;
+  if (zMag > 32768)  { zMag = 16384-mz; }
+
+//in theory..
+//Thanks, 
+//Kevin Ryan
